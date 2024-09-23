@@ -28,7 +28,7 @@ from transparent_background.InSPyReNet import InSPyReNet_SwinB
 from transparent_background.utils import *
 
 class Remover:
-    def __init__(self, mode="base", jit=False, device=None, ckpt=None, fast=None):
+    def __init__(self, mode="base", jit=False, device=None, ckpt=None, fast=None,reverse=False):
         """
         Args:
             mode   (str): Choose among below options
@@ -43,6 +43,7 @@ class Remover:
         cfg_path = os.environ.get('TRANSPARENT_BACKGROUND_FILE_PATH', os.path.abspath(os.path.expanduser('~')))
         home_dir = os.path.join(cfg_path, ".transparent-background")
         os.makedirs(home_dir, exist_ok=True)
+        self.reverse = reverse
 
         if not os.path.isfile(os.path.join(home_dir, "config.yaml")):
             shutil.copy(os.path.join(repopath, "config.yaml"), os.path.join(home_dir, "config.yaml"))
@@ -198,23 +199,62 @@ class Remover:
         if type == "map":
             img = (np.stack([pred] * 3, axis=-1) * 255).astype(np.uint8)
 
+
         elif type == "rgba":
+
             r, g, b = cv2.split(img)
-            pred = (pred * 255).astype(np.uint8)
+
+            if self.reverse:
+
+                pred = ((1 - pred) * 255).astype(np.uint8)
+
+            else:
+
+                pred = (pred * 255).astype(np.uint8)
+
             img = cv2.merge([r, g, b, pred])
 
+
         elif type == "green":
+
             bg = np.stack([np.ones_like(pred)] * 3, axis=-1) * [120, 255, 155]
-            img = img * pred[..., np.newaxis] + bg * (1 - pred[..., np.newaxis])
+
+            if self.reverse:
+
+                img = img * (1 - pred[..., np.newaxis]) + bg * pred[..., np.newaxis]
+
+            else:
+
+                img = img * pred[..., np.newaxis] + bg * (1 - pred[..., np.newaxis])
+
 
         elif type == "white":
+
             bg = np.stack([np.ones_like(pred)] * 3, axis=-1) * [255, 255, 255]
-            img = img * pred[..., np.newaxis] + bg * (1 - pred[..., np.newaxis])
+
+            if self.reverse:
+
+                img = img * (1 - pred[..., np.newaxis]) + bg * pred[..., np.newaxis]
+
+            else:
+
+                img = img * pred[..., np.newaxis] + bg * (1 - pred[..., np.newaxis])
+
 
         elif len(type) == 3:
+
             print(type)
+
             bg = np.stack([np.ones_like(pred)] * 3, axis=-1) * type
-            img = img * pred[..., np.newaxis] + bg * (1 - pred[..., np.newaxis])
+
+            if self.reverse:
+
+                img = img * (1 - pred[..., np.newaxis]) + bg * pred[..., np.newaxis]
+
+            else:
+
+                img = img * pred[..., np.newaxis] + bg * (1 - pred[..., np.newaxis])
+
 
         elif type == "blur":
             img = img * pred[..., np.newaxis] + cv2.GaussianBlur(img, (0, 0), 15) * (
